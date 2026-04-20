@@ -5,6 +5,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const mysql = require('mysql2/promise');
+const authenticateToken = require('./middleware/authToken');
 
 const NODE_ENV = process.env.NODE_ENV;
 const PORT = process.env.PORT;
@@ -92,6 +93,10 @@ app.post('/login', async (req,res) => {
         console.log(error);
         return res.status(500).json({ message: "サーバーエラー", error: error.message });
     }
+});
+
+app.post('/logout', authenticateToken, async (req,res) => {
+        res.json({ message: 'ログアウトしました' });
 });
 
 app.listen(PORT, () => {
