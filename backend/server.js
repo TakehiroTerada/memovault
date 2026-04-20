@@ -32,6 +32,32 @@ db.getConnection().then((connection) => {
     console.log("DB 接続失敗:", err);
 });
 
+app.post("/register", async (req, res) => {
+    const { email, userName, password } = req.body;
+    
+    if (!email) {
+        return res.status(400).json({ message: "メールアドレスを入力してください" });
+    }
+    if (!userName) {
+        return res.status(400).json({ message: "ユーザー名を入力してください" });
+    }
+    if (password.length < 6) {
+        return res.status(400).json({ message: "パスワードは6文字以上必要です" });
+    }
+
+    try {
+        const password_hash = await bcrypt.hash(password, 10);
+        const sql = 'INSERT INTO users (email, password, name) VALUES (?, ?, ?)';
+        const [results] = await db.query(sql, [email, password_hash, userName]);
+        
+        res.status(201).json({ message: "アカウント登録が完了しました。" });
+    } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ message: '既に登録済みのユーザーです' });
+        }
+        return res.status(500).json({ message: "サーバーエラー", error: error.message });
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`サーバーが起動しました。 ${PORT}`);
