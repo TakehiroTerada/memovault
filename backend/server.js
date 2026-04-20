@@ -1,4 +1,4 @@
-require('dotenv').config({path: '.env'});
+require('dotenv').config({path: `${__dirname}/.env`});
 
 const cors = require('cors');
 const express = require('express');
@@ -55,6 +55,41 @@ app.post("/register", async (req, res) => {
         if (error.code === 'ER_DUP_ENTRY') {
             return res.status(409).json({ message: '既に登録済みのユーザーです' });
         }
+        return res.status(500).json({ message: "サーバーエラー", error: error.message });
+    }
+});
+
+app.post('/login', async (req,res) => {
+    const {email,userName,password} = req.body;
+    if(!email){
+        return res.status(400).json({ message: "メールアドレスを入力してください" });
+    }
+    if(!userName){
+        return res.status(400).json({ message: "ユーザ名を入力してください" });
+    }
+    if(!password){
+        return res.status(400).json({ message: "パスワードを入力してください" });
+    }
+
+    try{
+        const sql = 'SELECT * FROM users where email = ? ;';
+        const [results] = await db.query(sql, [email]);
+        if(results.length === 0){
+            return res.status(401).json({ message: "登録されていないアカウントです" });
+        }
+        const isMatch = await bcrypt.compare(password, results[0].password);
+        if(!isMatch){
+            return res.status(401).json({ message: "認証失敗" });
+        }
+
+        const token = jwt.sign(
+            { userId: results[0].id, userName: results[0].name },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+        res.json({ message: "ログイン成功", token });
+    }catch(error){
+        console.log(error);
         return res.status(500).json({ message: "サーバーエラー", error: error.message });
     }
 });
