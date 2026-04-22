@@ -15,5 +15,5 @@ const authenticate  = (req, res, next) => {
         next();
     });
 };
-
+// Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsInVzZXJOYW1lIjoidGVzdG5hbWUiLCJpYXQiOjE3NzY4NTk4NzcsImV4cCI6MTc3Njg2MzQ3N30.mKtgY4dPg6KgAz7N6l5V-_t2In4MOvpS62dK29brab8
 module.exports = authenticate;

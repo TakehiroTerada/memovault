@@ -99,6 +99,26 @@ app.post('/logout', authenticateToken, async (req,res) => {
         res.json({ message: 'ログアウトしました' });
 });
 
+app.post('/api/memos', authenticateToken, async (req,res) => {
+    const userId = req.user.userId;
+    const { title, content } = req.body;
+    if (!title || !content){
+        return res.status(400).json({ message: "未記入箇所があります" });
+    }
+
+    try{
+        const sql = 'INSERT INTO memos ( user_id, title, content) VALUES ( ?, ?, ?);';
+        const [results] = await db.query(sql, [userId,title,content]);
+        if (results.affectedRows === 0){
+            return res.status(401).json({ message: "登録に失敗しました" });
+        }
+        res.status(201).json({ message: "メモが作成されました" });
+    }catch(error){
+        console.log(error);
+        res.status(500).json({ message: "サーバーエラー", error: error.message });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`サーバーが起動しました。 ${PORT}`);
 });
