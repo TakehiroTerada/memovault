@@ -119,6 +119,47 @@ app.post('/api/memos', authenticateToken, async (req,res) => {
     }
 });
 
+app.post('/api/tag', authenticateToken, async (req,res) => {
+    const { memo_id, tag_name } = req.body;
+    const user_id = req.user.userId;
+    if(!memo_id || !tag_name){
+        return res.status(400).json({ message: "未記入箇所があります"} );
+    }
+    try{
+        const sql = 'INSERT INTO tags (memo_id, user_id, tag_name) VALUES ( ?, ?, ?);'
+        const [results] = await db.query(sql, [memo_id, user_id, tag_name]);
+        
+        return res.status(201).json({ message: "登録完了"});
+    }catch(error){
+        console.log(error)
+        return res.status(500).json({ message: "サーバーエラー", error: error.message });
+    }
+});
+
+app.get('/api/memos', authenticateToken, async (req,res) => {
+    try{
+        const userId = req.user.userId;
+        const sql = 'SELECT * FROM memos where user_id = ? ;'
+        const [rusults] = await db.query(sql, [userId]);
+        
+        res.status(200).json(rusults);
+    }catch(error){
+        console.log(error);
+        return res.status(500).json({ message: "サーバーエラー", error: error.message});
+    }
+});
+
+// app.get('/api/memos/:id', authenticateToken, async (req,res) => {
+//     const [tag] = req.body;
+//     if (!tag){
+//         return;
+//     }
+    
+//     try{
+//         const
+//     }
+// });
+
 app.listen(PORT, () => {
     console.log(`サーバーが起動しました。 ${PORT}`);
 });
