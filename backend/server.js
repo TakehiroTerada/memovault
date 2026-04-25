@@ -119,6 +119,45 @@ app.post('/api/memos', authenticateToken, async (req,res) => {
     }
 });
 
+app.put('/api/memos/:id', authenticateToken, async (req,res) => {
+    const userId = req.user.userId;
+    const memoId = req.params.id;
+    const { title, content } = req.body;
+    
+    if (!title && !content){
+        return res.status(400).json({ message: "更新する内容を入力してください" });
+    }
+
+    try{
+        let sql = 'UPDATE memos SET '
+        let params = [];
+        
+        if (title){
+            sql += 'title = ?, ';
+            params.push(title);
+        }
+
+        if (content){
+            sql += 'content = ?, ';
+            params.push(content);
+        }
+
+        sql = sql.slice(0,-2);
+        sql += ' WHERE user_id = ? AND memo_id = ?';
+        params.push(userId, memoId);
+        const [results] = await db.query(sql, params);
+
+        if (results.affectedRows === 0){
+            return res.status(404).json({ message: "更新に失敗しました" });
+        }
+        
+        res.status(200).json({ message: "更新完了" });
+    }catch(error){
+        console.log(error);
+        res.status(500).json({ message: "サーバーエラー" });
+    }
+});
+
 app.post('/api/tag', authenticateToken, async (req,res) => {
     const { memo_id, tag_name } = req.body;
     const user_id = req.user.userId;
@@ -149,16 +188,30 @@ app.get('/api/memos', authenticateToken, async (req,res) => {
     }
 });
 
-// app.get('/api/memos/:id', authenticateToken, async (req,res) => {
-//     const [tag] = req.body;
-//     if (!tag){
-//         return;
-//     }
-    
-//     try{
-//         const
-//     }
-// });
+app.get('/api/memos/search', authenticateToken, async (req,res) => {
+    const userId = req.user.userId;
+    const { tagName, keyword } = req.query;
+    try{
+        let sql = "SELECT DISTINCT m.* FROM memos AS m JOIN tags AS t ON m.memo_id = t.memo_id WHERE m.user_id = ? "
+        let params = [userId];
+
+        if (tagName){
+            const tags = tagName.split(",");
+            sql += `AND t.tag_name IN (${tags.map( () => "?").join(",")}) `;
+            params.push(...tags); 
+        }
+        if (keyword){
+            sql += `AND (m.title LIKE ? OR m.content LIKE ?)`;
+            params.push(`%${keyword}%`, `%${keyword}%`);
+        }
+
+        const [results] = await db.query(sql, params);
+        return res.status(200).json(results);
+    }catch(error){
+        console.log(error);
+        return res.status(500).json({ message: "サーバーエラー", error: error.message });
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`サーバーが起動しました。 ${PORT}`);
