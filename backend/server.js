@@ -99,6 +99,7 @@ app.post('/logout', authenticateToken, async (req,res) => {
         res.json({ message: 'ログアウトしました' });
 });
 
+//ユーザーのメモを作成
 app.post('/api/memos', authenticateToken, async (req,res) => {
     const userId = req.user.userId;
     const { title, content } = req.body;
@@ -119,6 +120,7 @@ app.post('/api/memos', authenticateToken, async (req,res) => {
     }
 });
 
+//ユーザーのメモを更新
 app.put('/api/memos/:id', authenticateToken, async (req,res) => {
     const userId = req.user.userId;
     const memoId = req.params.id;
@@ -158,11 +160,36 @@ app.put('/api/memos/:id', authenticateToken, async (req,res) => {
     }
 });
 
-app.post('/api/tag', authenticateToken, async (req,res) => {
-    const { memo_id, tag_name } = req.body;
+//ユーザーのメモを削除
+app.delete('/api/memos/:id', authenticateToken, async (req,res) => {
     const user_id = req.user.userId;
+    const memo_id = req.params.id;
+    if (!memo_id){
+        return res.status(400).json({ message: "メモIDが必要です" });
+    }
+
+    try{
+        const sql = 'DELETE FROM memos WHERE user_id = ? AND memo_id = ? ';
+        const [results] = await db.query(sql, [user_id, memo_id]);
+
+        if (results.affectedRows === 0){
+            return res.status(404).json({ message: "削除に失敗しました" });
+        }
+        res.status(200).json({ message: "削除完了" });
+    }catch (error){
+        console.log(error);
+        return res.status(500).json({ message: "サーバーエラー", error: error.message });
+    }
+});
+
+//ユーザーのメモにタグを追加
+app.post('/api/memos/:memoId/tags', authenticateToken, async (req,res) => {
+    const memo_id = req.params.memoId;
+    const tag_name = req.body.tagName;
+    const user_id = req.user.userId;
+
     if(!memo_id || !tag_name){
-        return res.status(400).json({ message: "未記入箇所があります"} );
+        return res.status(400).json({ message: "未記入箇所があります" });
     }
     try{
         const sql = 'INSERT INTO tags (memo_id, user_id, tag_name) VALUES ( ?, ?, ?);'
@@ -175,19 +202,30 @@ app.post('/api/tag', authenticateToken, async (req,res) => {
     }
 });
 
-app.get('/api/memos', authenticateToken, async (req,res) => {
+//ユーザーのメモからタグを削除
+app.delete('/api/memos/:memoId/tags', authenticateToken, async (req,res) => {
+    const user_id = req.user.userId;
+    const memo_id = req.params.memoId;
+    const tag_name = req.body.tagName;
+
+    if (!memo_id || !tag_name){
+        return res.status(400).json({ message: "未記入箇所があります" });
+    }
     try{
-        const userId = req.user.userId;
-        const sql = 'SELECT * FROM memos where user_id = ? ;'
-        const [rusults] = await db.query(sql, [userId]);
-        
-        res.status(200).json(rusults);
-    }catch(error){
+        const sql = 'DELETE FROM tags WHERE user_id = ? AND memo_id = ? AND tag_name = ? ';
+        const [results] = await db.query(sql, [user_id, memo_id, tag_name]);
+
+        if (results.affectedRows === 0){
+            return res.status(404).json({ message: "削除に失敗しました" });
+        }
+        res.status(200).json({ message: "削除完了" });
+    }catch (error){
         console.log(error);
-        return res.status(500).json({ message: "サーバーエラー", error: error.message});
+        return res.status(500).json({ message: "サーバーエラー", error: error.message });
     }
 });
 
+//ユーザーのメモを検索
 app.get('/api/memos/search', authenticateToken, async (req,res) => {
     const userId = req.user.userId;
     const { tagName, keyword } = req.query;
@@ -213,6 +251,40 @@ app.get('/api/memos/search', authenticateToken, async (req,res) => {
     }
 });
 
+//ユーザーの特定のメモを取得
+app.get('/api/memos/:id', authenticateToken, async (req,res) => {
+    const user_id = req.user.userId;
+    const memo_id = req.params.id;
+    if (!memo_id){
+        return res.status(400).json({ message: "メモIDが必要です" });
+    }
+    
+    try{
+        const sql = 'SELECT * FROM memos WHERE user_id = ? AND memo_id = ? ';
+        const [results] = await db.query(sql, [user_id, memo_id]);
+        if (results.length === 0){
+            return res.status(404).json({ message: "メモが見つかりませんでした" });
+        }
+        res.status(200).json(results[0]);
+    }catch (error){
+        console.log(error);
+        return res.status(500).json({ message: "サーバーエラー", error: error.message });
+    }
+});
+
+//ユーザーのすべてのメモ取得
+app.get('/api/memos', authenticateToken, async (req,res) => {
+    try{
+        const userId = req.user.userId;
+        const sql = 'SELECT * FROM memos where user_id = ? ;'
+        const [results] = await db.query(sql, [userId]);
+        
+        res.status(200).json(results);
+    }catch(error){
+        console.log(error);
+        return res.status(500).json({ message: "サーバーエラー", error: error.message});
+    }
+});
 app.listen(PORT, () => {
     console.log(`サーバーが起動しました。 ${PORT}`);
 });
